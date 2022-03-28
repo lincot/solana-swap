@@ -271,7 +271,6 @@ function createSwapInstruction(
 ): TransactionInstruction {
   const dataLayout = BufferLayout.struct([
     BufferLayout.u8("instruction"),
-
     BufferLayout.blob(8, "amountIn"),
     BufferLayout.blob(8, "minimumAmountOut"),
   ]);
@@ -289,7 +288,7 @@ function createSwapInstruction(
   const keys = [
     { pubkey: swapAccount, isSigner: false, isWritable: false },
     { pubkey: authority, isSigner: false, isWritable: false },
-    { pubkey: userTransferAuthority, isSigner: true, isWritable: false },
+    { pubkey: userTransferAuthority, isSigner: false, isWritable: false },
     { pubkey: userSource, isSigner: false, isWritable: true },
     { pubkey: poolSource, isSigner: false, isWritable: true },
     { pubkey: poolDestination, isSigner: false, isWritable: true },
