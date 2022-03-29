@@ -6,6 +6,7 @@
   "author": "lincot",
   "license": "MIT",
   "devDependencies": {
+    "@types/bn.js": "^5.1.0",
     "typescript": "^4.6.3"
   },
   "dependencies": {

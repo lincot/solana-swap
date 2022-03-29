@@ -20,10 +20,10 @@ const BufferLayout = require("@solana/buffer-layout");
 const TOKEN_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
   "SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8",
 );
+const FEE_OWNER = new PublicKey("HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN");
 
 const connection = new Connection("https://api.devnet.solana.com", "recent");
 const owner = new Keypair();
-const feeOwner = new Keypair();
 const payer = new Keypair();
 const swapAccount = new Keypair();
 let swapAuthority: PublicKey;
@@ -43,14 +43,6 @@ function createInitSwapInstruction(
   mintPool: PublicKey,
   accountFee: PublicKey,
   accountDestination: PublicKey,
-  tradeFeeNumerator: number,
-  tradeFeeDenominator: number,
-  ownerTradeFeeNumerator: number,
-  ownerTradeFeeDenominator: number,
-  ownerWithdrawFeeNumerator: number,
-  ownerWithdrawFeeDenominator: number,
-  hostFeeNumerator: number,
-  hostFeeDenominator: number,
   curveType: number,
   curveParameters: BN,
 ): TransactionInstruction {
@@ -85,14 +77,14 @@ function createInitSwapInstruction(
   const encodeLength = commandDataLayout.encode(
     {
       instruction: 0,
-      tradeFeeNumerator,
-      tradeFeeDenominator,
-      ownerTradeFeeNumerator,
-      ownerTradeFeeDenominator,
-      ownerWithdrawFeeNumerator,
-      ownerWithdrawFeeDenominator,
-      hostFeeNumerator,
-      hostFeeDenominator,
+      tradeFeeNumerator: 0,
+      tradeFeeDenominator: 10000,
+      ownerTradeFeeNumerator: 5,
+      ownerTradeFeeDenominator: 10000,
+      ownerWithdrawFeeNumerator: 0,
+      ownerWithdrawFeeDenominator: 0,
+      hostFeeNumerator: 20,
+      hostFeeDenominator: 100,
       curveType,
       curveParameters: curveParamsBuffer,
     },
@@ -117,14 +109,6 @@ async function createTokenSwap(
   mintPool: PublicKey,
   accountFee: PublicKey,
   accountDestination: PublicKey,
-  tradeFeeNumerator: number,
-  tradeFeeDenominator: number,
-  ownerTradeFeeNumerator: number,
-  ownerTradeFeeDenominator: number,
-  ownerWithdrawFeeNumerator: number,
-  ownerWithdrawFeeDenominator: number,
-  hostFeeNumerator: number,
-  hostFeeDenominator: number,
   curveType: number,
   curveParameters: BN,
 ) {
@@ -151,14 +135,6 @@ async function createTokenSwap(
     mintPool,
     accountFee,
     accountDestination,
-    tradeFeeNumerator,
-    tradeFeeDenominator,
-    ownerTradeFeeNumerator,
-    ownerTradeFeeDenominator,
-    ownerWithdrawFeeNumerator,
-    ownerWithdrawFeeDenominator,
-    hostFeeNumerator,
-    hostFeeDenominator,
     curveType,
     curveParameters,
   );
@@ -211,7 +187,7 @@ async function createPool() {
     connection,
     payer,
     mintPool,
-    feeOwner.publicKey,
+    FEE_OWNER,
   );
 
   accountA = await createAccount(
@@ -242,15 +218,7 @@ async function createPool() {
     mintPool,
     accountFee,
     accountDestination,
-    25,
-    10000,
-    5,
-    10000,
     0,
-    0,
-    20,
-    100,
-    0, // constant product
     new BN(1_000_000),
   );
 }
@@ -278,7 +246,7 @@ function createSwapInstruction(
   const data = Buffer.alloc(dataLayout.span);
   dataLayout.encode(
     {
-      instruction: 1, // Swap instruction
+      instruction: 1,
       amountIn: new BN(amountIn).toBuffer(),
       minimumAmountOut: new BN(minimumAmountOut).toBuffer(),
     },
@@ -366,7 +334,7 @@ async function main() {
   await connection.confirmTransaction(
     await connection.requestAirdrop(
       payer.publicKey,
-      1_000_000_000,
+      20_000_000,
     ),
   );
   await createMints();
