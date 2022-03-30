@@ -1,16 +1,7 @@
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  sendAndConfirmTransaction,
-  Transaction,
-  TransactionInstruction,
-  Account
-} from "@solana/web3.js";
+import { Account, Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { approve, createAccount, createMint, mintTo } from "@solana/spl-token";
-import { TokenSwap, TOKEN_SWAP_PROGRAM_ID } from "@solana/spl-token-swap";
+import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 import BN from "bn.js";
-const BufferLayout = require("@solana/buffer-layout");
 
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -29,6 +20,7 @@ let accountA: PublicKey;
 let accountB: PublicKey;
 let accountDestination: PublicKey;
 let accountFee: PublicKey;
+let tokenSwap: TokenSwap;
 
 async function createMints() {
   mintA = await createMint(
@@ -130,7 +122,7 @@ async function createPool() {
     TOKEN_PROGRAM_ID,
   );
 
-  await TokenSwap.createTokenSwap(
+  tokenSwap = await TokenSwap.createTokenSwap(
     connection,
     new Account(payer.secretKey),
     new Account(swapAccount.secretKey),
@@ -155,63 +147,6 @@ async function createPool() {
     0,
     new BN(1_000_000),
   );
-}
-
-function createSwapInstruction(
-  swapAccount: PublicKey,
-  authority: PublicKey,
-  userTransferAuthority: PublicKey,
-  userSource: PublicKey,
-  poolSource: PublicKey,
-  poolDestination: PublicKey,
-  userDestination: PublicKey,
-  poolMint: PublicKey,
-  feeAccount: PublicKey,
-  hostFeeAccount: PublicKey | null,
-  amountIn: number,
-  minimumAmountOut: number,
-): TransactionInstruction {
-  const dataLayout = BufferLayout.struct([
-    BufferLayout.u8("instruction"),
-    BufferLayout.blob(8, "amountIn"),
-    BufferLayout.blob(8, "minimumAmountOut"),
-  ]);
-
-  const amountInArray = new Uint8Array(8);
-  new BN(amountIn).toBuffer().copy(amountInArray);
-  const minimumAmountOutArray = new Uint8Array(8);
-  new BN(minimumAmountOut).toBuffer().copy(minimumAmountOutArray);
-
-  const data = Buffer.alloc(dataLayout.span);
-  dataLayout.encode(
-    {
-      instruction: 1,
-      amountIn: amountInArray,
-      minimumAmountOut: minimumAmountOutArray,
-    },
-    data,
-  );
-
-  const keys = [
-    { pubkey: swapAccount, isSigner: false, isWritable: false },
-    { pubkey: authority, isSigner: false, isWritable: false },
-    { pubkey: userTransferAuthority, isSigner: false, isWritable: false },
-    { pubkey: userSource, isSigner: false, isWritable: true },
-    { pubkey: poolSource, isSigner: false, isWritable: true },
-    { pubkey: poolDestination, isSigner: false, isWritable: true },
-    { pubkey: userDestination, isSigner: false, isWritable: true },
-    { pubkey: poolMint, isSigner: false, isWritable: true },
-    { pubkey: feeAccount, isSigner: false, isWritable: true },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-  ];
-  if (hostFeeAccount !== null) {
-    keys.push({ pubkey: hostFeeAccount, isSigner: false, isWritable: true });
-  }
-  return new TransactionInstruction({
-    keys,
-    programId: TOKEN_SWAP_PROGRAM_ID,
-    data,
-  });
 }
 
 async function swap() {
@@ -247,25 +182,15 @@ async function swap() {
     user.publicKey,
   );
 
-  await sendAndConfirmTransaction(
-    connection,
-    new Transaction().add(
-      createSwapInstruction(
-        swapAccount.publicKey,
-        swapAuthority,
-        userTransferAuthority.publicKey,
-        userAccountA,
-        accountA,
-        accountB,
-        userAccountB,
-        mintPool,
-        accountFee,
-        hostFeeAccount,
-        50,
-        45,
-      ),
-    ),
-    [payer, userTransferAuthority],
+  tokenSwap.swap(
+    userAccountA,
+    accountA,
+    accountB,
+    userAccountB,
+    hostFeeAccount,
+    new Account(userTransferAuthority.secretKey),
+    50,
+    45,
   );
 }
 
@@ -276,7 +201,6 @@ async function main() {
       50_000_000,
     ),
   );
-  console.log("airdropped");
   await createMints();
   await createPool();
   await swap();
