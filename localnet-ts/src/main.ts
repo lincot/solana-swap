@@ -17,12 +17,12 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 const TOKEN_SWAP_PROGRAM_ID = new PublicKey(
   "SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8",
 );
-const FEE_OWNER = new PublicKey("HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN");
 
 const connection = new Connection("http://localhost:8899", "recent");
 const owner = new Keypair();
 const payer = new Keypair();
 const swapAccount = new Keypair();
+const feeOwner = new Keypair();
 let swapAuthority: PublicKey;
 let mintA: PublicKey;
 let mintB: PublicKey;
@@ -78,8 +78,8 @@ function createInitSwapInstruction(
       tradeFeeDenominator: 10000,
       ownerTradeFeeNumerator: 5,
       ownerTradeFeeDenominator: 10000,
-      ownerWithdrawFeeNumerator: 0,
-      ownerWithdrawFeeDenominator: 0,
+      ownerWithdrawFeeNumerator: 1,
+      ownerWithdrawFeeDenominator: 6,
       hostFeeNumerator: 20,
       hostFeeDenominator: 100,
       curveType,
@@ -196,7 +196,7 @@ async function createPool() {
     connection,
     payer,
     mintPool,
-    FEE_OWNER,
+    feeOwner.publicKey,
     new Keypair(),
     undefined,
     TOKEN_PROGRAM_ID,
