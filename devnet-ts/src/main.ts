@@ -1,7 +1,6 @@
 import { Account, Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { approve, createAccount, createMint, mintTo } from "@solana/spl-token";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
-import BN from "bn.js";
 
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -13,6 +12,7 @@ const owner = new Keypair();
 const payer = new Keypair();
 const swapAccount = new Keypair();
 let swapAuthority: PublicKey;
+let swapAuthorityBump: number;
 let mintA: PublicKey;
 let mintB: PublicKey;
 let mintPool: PublicKey;
@@ -29,9 +29,6 @@ async function createMints() {
     owner.publicKey,
     undefined,
     2,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
   mintB = await createMint(
     connection,
@@ -39,14 +36,11 @@ async function createMints() {
     owner.publicKey,
     undefined,
     2,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
 }
 
 async function createPool() {
-  [swapAuthority] = await PublicKey.findProgramAddress(
+  [swapAuthority, swapAuthorityBump] = await PublicKey.findProgramAddress(
     [swapAccount.publicKey.toBuffer()],
     TOKEN_SWAP_PROGRAM_ID,
   );
@@ -57,27 +51,18 @@ async function createPool() {
     swapAuthority,
     undefined,
     2,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
   accountDestination = await createAccount(
     connection,
     payer,
     mintPool,
     owner.publicKey,
-    new Keypair(),
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
   accountFee = await createAccount(
     connection,
     payer,
     mintPool,
     FEE_OWNER,
-    new Keypair(),
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
 
   accountA = await createAccount(
@@ -86,8 +71,6 @@ async function createPool() {
     mintA,
     swapAuthority,
     new Keypair(),
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
   await mintTo(
     connection,
@@ -96,9 +79,6 @@ async function createPool() {
     accountA,
     owner,
     1_000,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
 
   accountB = await createAccount(
@@ -107,8 +87,6 @@ async function createPool() {
     mintB,
     swapAuthority,
     new Keypair(),
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
   await mintTo(
     connection,
@@ -117,9 +95,6 @@ async function createPool() {
     accountB,
     owner,
     1_000,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID,
   );
 
   tokenSwap = await TokenSwap.createTokenSwap(
@@ -136,6 +111,7 @@ async function createPool() {
     accountDestination,
     TOKEN_SWAP_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
+    swapAuthorityBump,
     0,
     10000,
     5,
@@ -145,7 +121,6 @@ async function createPool() {
     20,
     100,
     0,
-    new BN(1_000_000),
   );
 }
 
